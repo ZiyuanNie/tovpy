@@ -63,12 +63,12 @@ class EOSPolytropic(object):
     """
     
     def __init__(self, 
-                 polytropic_constant = 1.
+                 polytropic_constant = 1.,
                  polytropic_exponent = 2.):
 
-    self.Gamma = polytropic_exponent
-    self.Gammamo = polytropic_exponent - 1.
-    self.K = polytropic_constant
+        self.Gamma = polytropic_exponent
+        self.Gammamo = polytropic_exponent - 1.
+        self.K = polytropic_constant
 
     def __give_eos_params(self):
         return self.K, self.Gamma, self.Gammamo
@@ -213,7 +213,7 @@ class EOSPiecewisePolytropic(object):
         self.gammaTab = gamma * one
         self.nTab = one / (gamma - 1.0)
         self.aTab = zero
-        self.hTab[0] = zero
+        self.hTab = zero
         return
 
     def __setup_piecewise_polytrope_4(self,logp1_SI,gamma1,gamma2,gamma3):
@@ -347,7 +347,7 @@ class EOSPiecewisePolytropic(object):
         n_i = 1.0 / (self.gammaTab - 1.0);
 
         a_i = np.zeros_like(p_i)
-        i = np.arange(1,self.nPoly):
+        i = np.arange(1,self.nPoly)
         a_i[i] = a_i[i-1] + (n_i[i-1] - n_i[i]) * p_i[i] / rho_i[i]
         
         eps_i = (1.0 + a_i) * rho_i + n_i * p_i
@@ -652,7 +652,7 @@ class EOSTabular(object):
         h[ids_lt_min] = np.exp(self.loghTab[0] + 0.4 * (logp - self.logpTab[0]))
         logh = self.interp_PseudoEnthalpy_from_Pressure(logp)
         h[ids_gt_min] = np.exp(logh)
-         if h.size == 1:
+        if h.size == 1:
             return h[0]
         return h
 
@@ -740,7 +740,7 @@ class EOS(object):
     def EnergyDensityDeriv_Of_Pressure(self,x):
         return self.eos.EnergyDensityDeriv_Of_Pressure(x)
 
-    def PseudoEnthalpy_Of_Pressure(self,x);
+    def PseudoEnthalpy_Of_Pressure(self,x):
         return self.eos.PseudoEnthalpy_Of_Pressure(x)
 
     """ h-functions """
@@ -760,5 +760,8 @@ if __name__ == "__main__":
 
     #TODO tests
     
+    eos = EOSPiecewisePolytropic('piecewise_poly_1',gamma=2,K=100)
+    #eos = EOSPiecewisePolytropic('piecewise_poly_1',**{'gamma':2,'K':100})
 
+    ##eos.__polytrope_piece_of_p(1e-3)
     
