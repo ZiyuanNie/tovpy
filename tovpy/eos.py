@@ -9,10 +9,11 @@ import numpy as np
 import scipy as sp
 from scipy.interpolate import CubicSpline
 import pandas as pd
+from io import StringIO
 import units
 
 # Data for piecewise polytropes with 4 pieces
-PIECEWISE_POLYTROPE_TABLE_4 = """
+PIECEWISE_POLYTROPE_TABLE4 = """
 eos logP1 gamma1 gamma2 gamma3
 PAL6 34.380 2.227 2.189 2.159 
 SLy 34.384 3.005 2.988 2.851 
@@ -154,7 +155,7 @@ class EOSPiecewisePolytropic(object):
     """
     
     def __init__(self, name, **params):
-
+        
         self.nPoly = 0 # number of pieces
         self.rhoTab = [] # starting rest-mass density of polytropic piece i (kg/m^3) 
         self.epsTab = [] # starting energy density of polytropic piece i (J/m^3) 
@@ -166,18 +167,18 @@ class EOSPiecewisePolytropic(object):
         self.hTab = [] # pseudo-enthalpy
 
         self.uts = units.Units()
-
+        
         if name == 'piecewise_poly_1' or name == 'poly':
 
             if "gamma" not in params:
                 raise ValueError("The polytropic index 'gamma' is required ")
             if "K" not in params:
                 raise ValueError("The polytropic constant 'K' is required")
-
+            
             self.__setup_piecewise_polytrope_1(params['gamma'],params['K'])
 
         elif name == 'piecewise_poly_4':
-
+            
             if "gamma1" not in params:
                 raise ValueError("The polytropic index 'gamma1' is required ")
             if "gamma2" not in params:
@@ -190,22 +191,23 @@ class EOSPiecewisePolytropic(object):
             self.__setup_piecewise_polytrope_4(params['logP1'],params['gamma1'],params['gamma2'],params['gamma3'])
             
         else:
-
+                
             params = self.__find_eos_in_existing_piecewise_polytrope_4(name)
             if not params:
                 raise ValueError("Unknown EOS name {}".format(name))
 
             self.__setup_piecewise_polytrope_4(params['logP1'],params['gamma1'],params['gamma2'],params['gamma3'])
-
+        return
+    
     """ setup functions """
-            
+    
     def __setup_piecewise_polytrope_1(self,gamma,K):
         """
         Single piece polytropic EOS
         """
         self.nPol = 1
-        zero = np.zeros(self.nPoly)
-        one = np.ones(self.nPoly)
+        zero = np.atleast_1d(0.)
+        one = np.atleast_1d(1.)
         self.rhoTab = zero
         self.epsTab = zero
         self.pTab = zero
@@ -215,7 +217,7 @@ class EOSPiecewisePolytropic(object):
         self.aTab = zero
         self.hTab = zero
         return
-
+    
     def __setup_piecewise_polytrope_4(self,logp1_SI,gamma1,gamma2,gamma3):
         """
         Four pieces polytropic EOS 
@@ -234,10 +236,10 @@ class EOSPiecewisePolytropic(object):
         # Transition densities between the 3 high-density polytropes */
         rho1 = 10.0**17.7
         rho2 = 10.0**18.0
-
+        
         # Pressure at rho1 
         p1 = 10.0**logp1_SI
- 
+        
         # Polytropic constants 
         k1 = p1 / rho1**gamma1
         k2 = p1 / rho1**gamma2
@@ -246,9 +248,9 @@ class EOSPiecewisePolytropic(object):
         # Calculate the variable joining density rho0 between the high and low density EOS 
         rho0 = (kLow[3] / k1)**( 1.0 / (gamma1 - gammaLow[3]))
         p1min = kLow[3] * rho1**gammaLow[3]
-
-        if logp1_si < log10(p1min) or logp1_si > 34.5:
-            raise ValueError("logp1_si = {:.3f} should be between {:.3f} and 34.5".format(logp1_si,log10(p1min)))
+        
+        if logp1_SI < np.log10(p1min) or logp1_SI > 34.5:
+            raise ValueError("logp1_SI = {:.3f} should be between {:.3f} and 34.5".format(logp1_SI,np.log10(p1min)))
  
         # Add another polytrope if the joining density is
         # below the start of the last low density polytrope or
@@ -285,9 +287,9 @@ class EOSPiecewisePolytropic(object):
             self.rhoTab[4] = rho0
             self.rhoTab[5] = rho1
             self.rhoTab[6] = rho2
-
+            
         else:
-
+            
             # Add an 8th polytrope between gammaLow[3] and gamma1.
             # It will be between the densities rhoJoin1 and rhoJoin2. 
 
@@ -339,19 +341,21 @@ class EOSPiecewisePolytropic(object):
         C_SI = self.uts.const('C_SI')
         G_C2_SI = self.uts.const('C_SI')
 
-        self.rhoTab = self.rhoTab * G_C2_SI 
-        self.kTab = self.kTab * G_SI**(1.0 - self.gammaTab) * C_SI**(2.0 * self.gammaTab - 4.0)
+        self.rhoTab *= G_C2_SI 
+        self.kTab *= G_SI**(1.0 - self.gammaTab) * C_SI**(2.0 * self.gammaTab - 4.0)
+        ##print(self.gammaTab)#,self.kTab,self.rhoTab) 
         
         # Calculate remaining quantities (p, n, a, eps, h)
-        p_i = self.kTab * self.rhoTab**self.gammaTab
+        rho_i = self.rhoTab
+        p_i = self.kTab * np.power(rho_i, self.gammaTab)
         n_i = 1.0 / (self.gammaTab - 1.0);
-
+        
         a_i = np.zeros_like(p_i)
         i = np.arange(1,self.nPoly)
         a_i[i] = a_i[i-1] + (n_i[i-1] - n_i[i]) * p_i[i] / rho_i[i]
         
         eps_i = (1.0 + a_i) * rho_i + n_i * p_i
-
+        
         enthalpy_i = 1.0 + a_i + (n_i + 1) * p_i / rho_i
         enthalpy_i[0] = 1.0 # p/rho -> 0 as rho -> 0, and a_0 = 0
         
@@ -360,15 +364,15 @@ class EOSPiecewisePolytropic(object):
         self.aTab = a_i
         self.epsTab = eps_i
         self.hTab = np.log(enthalpy_i)
-         
+        
         return
-
+    
     def __existing_piecewise_polytrope_4(self):
         """
         Load data for existing 4-pieces piecewise polytropic
         """
         return pd.read_csv(StringIO(PIECEWISE_POLYTROPE_TABLE4), delim_whitespace=True).to_dict('records')
-
+    
     def __find_eos_in_existing_piecewise_polytrope_4(self, name):
         """
         Load data for existing 4-pieces piecewise polytropic
@@ -377,7 +381,7 @@ class EOSPiecewisePolytropic(object):
         return next((d for d in pp4data if d['eos'] == name), None)
     
     """ h-functions """
-
+    
     def __polytrope_piece_of_h(self,h):
         """
         Determine which polytrope piece h belongs to
@@ -434,7 +438,7 @@ class EOSPiecewisePolytropic(object):
         a_i = self.aTab[i]
         cs = np.sqrt((enthalpy - 1.0 - a_i) / (n_i * enthalpy))
         return cs
-
+    
     """ p-functions """
     
     def __polytrope_piece_of_p(self,p):
@@ -564,7 +568,7 @@ class EOSTabular(object):
         pTab = self.table[:, 0]
         eTab = self.table[:, 1]
         hTab = self.__pseudoenthalpy_from_p_and_e(pTab,eTab)
-
+        
         self.min_pTab = min(pTab)
         self.min_eTab = min(eTab)
         self.min_hTab = min(hTab)
@@ -758,10 +762,12 @@ class EOS(object):
 if __name__ == "__main__":
 
 
-    #TODO tests
+    #TODO extensive tests
     
     eos = EOSPiecewisePolytropic('piecewise_poly_1',gamma=2,K=100)
     #eos = EOSPiecewisePolytropic('piecewise_poly_1',**{'gamma':2,'K':100})
+    print(eos.EnergyDensity_Of_Pressure(1e-3))
 
-    ##eos.__polytrope_piece_of_p(1e-3)
-    
+    ##eos = EOSPiecewisePolytropic('SLy')
+    ##print(eos.EnergyDensity_Of_Pressure(1e-3))
+
