@@ -506,11 +506,19 @@ class EOSTabular(object):
 
     Class for tabulated EOS 
 
-    EOS data is expected in two-columns format:
+    EOS data is expected in the format:
 
-    pressure [m^-2] energy_density [m^-2] 
+    L1
+    C1 C2 C3 C4
+    ... 
 
-    and can be read from a file or taken as 2D ndarray
+    with 
+
+    L1 number of tabulated points
+    C1 energy density/c^2    (g/cm^3)
+    C2 pressure              (dynes/cm^2)
+    C3 enthalpy              (cm^2/s^2)
+    C4 baryon number density (cm^{-3})
 
     EOS tables can be found e.g.
 
@@ -519,7 +527,8 @@ class EOSTabular(object):
     https://github.com/lscsoft/bilby/tree/master/bilby/gw/eos/eos_tables
     https://bitbucket.org/bernuzzi/tov/src/master/EOS/
 
-    #TODO prepare a script to convert Lorene/RNS format to this ones ...
+    #TODO adapt code for this format 
+    #     adapt LAL tables to this format
 
     """
 
@@ -533,7 +542,8 @@ class EOSTabular(object):
             if "filename" not in params:
                 raise ValueError("Need a filename")
             
-            self.table = np.loadtxt(params['filename'], usecols = (0,1))
+            self.table = np.loadtxt(params['filename'],
+                                    skiprows = 1)
             
         elif name == 'from_ndarray':
 
@@ -565,17 +575,19 @@ class EOSTabular(object):
         https://docs.scipy.org/doc/scipy/reference/generated/scipy.interpolate.CubicSpline.html
         """
         
-        pTab = self.table[:, 0]
-        eTab = self.table[:, 1]
-        hTab = self.__pseudoenthalpy_from_p_and_e(pTab,eTab)
+        eTab = self.table[:, 0]
+        pTab = self.table[:, 1]
+        if self.table.shape[2] == 3:
+            hTab = self.__pseudoenthalpy_from_p_and_e(pTab,eTab)
+        # ...
         
         self.min_pTab = min(pTab)
         self.min_eTab = min(eTab)
         self.min_hTab = min(hTab)
 
-        logpTab = np.log(pTab)
-        logeTab = np.log(eTab)
-        loghTab = np.log(hTab)
+        self.logpTab = np.log(pTab)
+        self.logeTab = np.log(eTab)
+        self.loghTab = np.log(hTab)
 
         self.interp_EnergyDensity_from_Pressure = CubicSpline(logpTab,logeTab)
         self.interp_EnergyDensity_from_PseudoEnthalpy = CubicSpline(loghTab,logeTab)
