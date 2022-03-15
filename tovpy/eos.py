@@ -106,17 +106,17 @@ class EOSPolytropic(object):
         return rho
     
     def Pressure_Of_PseudoEnthalpy(self,h):
-        rho = self.BaryonRestMass_Of_PseudoEnthalpy(h)
+        rho = self.BaryonRestMassDensity_Of_PseudoEnthalpy(h)
         p = self.Pressure_Of_RestMassDensity(rho)
         return p
 
     def SpecificInternalEnergy_Of_PseudoEnthalpy(self,h):
-        rho = self.BaryonRestMass_Of_PseudoEnthalpy(h)
+        rho = self.BaryonRestMassDensity_Of_PseudoEnthalpy(h)
         eps = self.SpecificInternalEnergy_Of_RestMassDensity(rho)
         return eps
     
     def EnergyDensity_Of_PseudoEnthalpy(self,h):
-        rho = self.BaryonRestMass_Of_PseudoEnthalpy(h)
+        rho = self.BaryonRestMassDensity_Of_PseudoEnthalpy(h)
         e = self.EnergyDensity_Of_RestMassDensity(rho)
         return e
 
