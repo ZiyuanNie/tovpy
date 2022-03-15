@@ -261,8 +261,10 @@ class EOSPiecewisePolytropic(object):
             # No issue. There will be a total of 7 polytropes.
             
             self.nPoly = 7
-            zero = np.zeros(self.nPoly)
-            self.kTab, self.gammaTab, self.rhoTab = zero, zero, zero
+            #zero = np.zeros(self.nPoly)
+            self.kTab = np.zeros(self.nPoly)
+            self.gammaTab = np.zeros(self.nPoly)
+            self.rhoTab = np.zeros(self.nPoly)
             
             self.kTab[0] = kLow[0]
             self.kTab[1] = kLow[1]
