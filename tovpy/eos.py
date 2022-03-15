@@ -589,10 +589,10 @@ class EOSTabular(object):
         self.logeTab = np.log(eTab)
         self.loghTab = np.log(hTab)
 
-        self.interp_EnergyDensity_from_Pressure = CubicSpline(logpTab,logeTab)
-        self.interp_EnergyDensity_from_PseudoEnthalpy = CubicSpline(loghTab,logeTab)
-        self.interp_Pressure_from_PseudoEnthalpy = CubicSpline(loghTab,logpTab)
-        self.interp_PseudoEnthalpy_from_EnergyDensity = CubicSpline(logeTab,loghTab)
+        self.interp_EnergyDensity_from_Pressure = CubicSpline(self.logpTab,self.logeTab)
+        self.interp_EnergyDensity_from_PseudoEnthalpy = CubicSpline(self.loghTab,self.logeTab)
+        self.interp_Pressure_from_PseudoEnthalpy = CubicSpline(self.loghTab,self.logpTab)
+        self.interp_PseudoEnthalpy_from_EnergyDensity = CubicSpline(self.logeTab,self.loghTab)
 
     def __remove_leading_zero(self, table):
         """
