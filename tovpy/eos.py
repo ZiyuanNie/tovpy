@@ -339,7 +339,7 @@ class EOSPiecewisePolytropic(object):
         # Convert to geometric units
         G_SI = self.uts.const('G_SI')
         C_SI = self.uts.const('C_SI')
-        G_C2_SI = self.uts.const('C_SI')
+        G_C2_SI = self.uts.const('G_C2_SI')
 
         self.rhoTab *= G_C2_SI 
         self.kTab *= G_SI**(1.0 - self.gammaTab) * C_SI**(2.0 * self.gammaTab - 4.0)
