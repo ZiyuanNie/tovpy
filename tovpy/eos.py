@@ -356,7 +356,7 @@ class EOSPiecewisePolytropic(object):
         
         eps_i = (1.0 + a_i) * rho_i + n_i * p_i
         
-        enthalpy_i = 1.0 + a_i + (n_i + 1) * p_i / rho_i
+        enthalpy_i[i] = 1.0 + a_i[i] + (n_i[i] + 1) * p_i[i] / rho_i[i]
         enthalpy_i[0] = 1.0 # p/rho -> 0 as rho -> 0, and a_0 = 0
         
         self.pTab = p_i
