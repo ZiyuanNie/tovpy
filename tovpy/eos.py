@@ -307,8 +307,10 @@ class EOSPiecewisePolytropic(object):
 
             # Now join all 8 polytropes. 
             self.nPoly = 8
-            zero = np.zeros(self.nPoly)
-            self.kTab, self.gammaTab, self.rhoTab = zero, zero, zero
+            #zero = np.zeros(self.nPoly)
+            self.kTab = np.zeros(self.nPoly) 
+            self.gammaTab = np.zeros(self.nPoly)
+            self.rhoTab = np.zeros(self.nPoly)
 
             self.kTab[0] = kLow[0]
             self.kTab[1] = kLow[1]
