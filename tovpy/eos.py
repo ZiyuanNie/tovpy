@@ -645,7 +645,7 @@ class EOSTabular(object):
         logp = np.log(p[ids_gt_min])
         loge = self.interp_EnergyDensity_from_Pressure(logp)
         dloge_dlogp = self.interp_EnergyDensity_from_Pressure(logp, 1) # drvt
-        dedp[ids_gt_min] = dloge_dlogp * npexp(loge - logp)
+        dedp[ids_gt_min] = dloge_dlogp * np.exp(loge - logp)
         if dedp.size == 1:
             return dedp[0]
         return dedp
@@ -658,7 +658,7 @@ class EOSTabular(object):
         dp = p * rel_dp
         e_upper = self.Energy_Of_Pressure(p + dp)
         e_lower = self.Energy_Of_Pressure(p - dp)
-        dedp = (eps_upper - eps_lower) / (2. * dp)
+        dedp = (e_upper - e_lower) / (2. * dp)
         return dedp
         
     def PseudoEnthalpy_Of_Pressure(self,p):
@@ -669,7 +669,7 @@ class EOSTabular(object):
         h = np.zeros(p.size)
         ids_lt_min = np.nonzero(np.logical_and(p < self.min_pTab, p > 0.0))
         ids_gt_min = np.nonzero(p >= self.min_pTab)
-        logp = log(p)
+        logp = np.log(p)
         h[ids_lt_min] = np.exp(self.loghTab[0] + 0.4 * (logp - self.logpTab[0]))
         logh = self.interp_PseudoEnthalpy_from_Pressure(logp)
         h[ids_gt_min] = np.exp(logh)
@@ -688,7 +688,7 @@ class EOSTabular(object):
         ids_lt_min = np.nonzero(np.logical_and(h < self.min_hTab, h > 0.0))
         ids_gt_min = np.nonzero(h >= self.min_hTab)
         logh = np.log(h)
-        e[ids_lt_min] = np.exp(self.logeTab[0] + 1.5 * (logh[ids_lt_min] - loghTab[0]))
+        e[ids_lt_min] = np.exp(self.logeTab[0] + 1.5 * (logh[ids_lt_min] - self.loghTab[0]))
         loge = self.interp_EnergyDensity_from_PseudoEnthalpy(logh)
         e[ids_gt_min] = np.log(loge)
         if e.size == 1:
@@ -704,9 +704,9 @@ class EOSTabular(object):
         ids_lt_min = np.nonzero(np.logical_and(h < self.min_hTab, h > 0.0))
         ids_gt_min = np.nonzero(h >= self.min_hTab)
         log_h = log(h)
-        p[ids_lt_min] = np.exp(self.logpTab[0] + 2.5 * (logh - self.loghTab[0]))
-        logp = self.interp_Pressure_from_PseudoEnthalpy(logh)
-        p[ids_gt_min] = exp(logp)
+        p[ids_lt_min] = np.exp(self.logpTab[0] + 2.5 * (log_h - self.loghTab[0]))
+        logp = self.interp_Pressure_from_PseudoEnthalpy(log_h)
+        p[ids_gt_min] = np.exp(logp)
         if p.size == 1:
             return p[0]
         return p
