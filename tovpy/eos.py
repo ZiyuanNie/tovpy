@@ -134,7 +134,8 @@ class EOSPolytropic(object):
     
     def EnergyDensityDeriv_Of_Pressure(self,p):
         #TODO
-        dedp = 0.
+        K,G,G_1 = self.__give_eos_params()
+        dedp = (p/K)**(1.0/G)*(1.0+K*(p/K)**(G_1/G)*(p+G_1)/(G_1*p))/G
         return dedp
         
     def PseudoEnthalpy_Of_Pressure(self,p):
