@@ -14,7 +14,7 @@ with
     C3 enthalpy              (cm^2/s^2)
     C4 baryon number density (cm^{-3})
 
-This format matches what is used in Stergioulas' [rns code](http://www.gravity.phys.uwm.edu/rns/).
+This format matches what is used in Stergioulas' [rns code](http://www.gravity.phys.uwm.edu/rns/) ([Updated link](https://github.com/cgca/rns)).
 Some EOS tables are taken from there:
 
      eosA		PANDHARIPANDE NEUTRON: A&B EOS A
