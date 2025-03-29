@@ -6,13 +6,15 @@ Various classes for barotropic equations of state (EOS)
 
 import sys, os, shutil
 import numpy as np
+from numpy import log, exp
 import scipy as sp
-from scipy.integrate import solve_ivp
-from scipy.special import factorial2
+from scipy.integrate import solve_ivp, odeint
+from scipy.special import factorial2, gamma, factorial2, hyp2f1
 import matplotlib.pyplot as plt
-
-import eos as EOS
-import units
+from scipy.optimize import fsolve, bisect
+from math import comb, prod
+import tovpy.eos as EOS
+import tovpy.units
 
 
 
@@ -20,7 +22,6 @@ import units
 class TOV(object):
     
     """ 
-    
     Class to solve the Tolman-Oppenheimer-Volkov stellar structure
     equations together with even/odd parity stationary bartropic perturbations
     
@@ -34,31 +35,33 @@ class TOV(object):
     https://lscsoft.docs.ligo.org/lalsuite/lalsimulation/_l_a_l_sim_neutron_star_t_o_v_8c_source.html
     https://bitbucket.org/bernuzzi/tov/src/master/TOVL.m
     https://lscsoft.docs.ligo.org/bilby/_modules/bilby/gw/eos/tov_solver.html
-    
     """
 
     def __init__(self,
-                 eos = None, # EOS instance
-                 leven = [], # multipole indexes of even perturbations 
-                 lodd = [], # multipole indexes of odd perturbations 
-                 dhfact = -1e-3, # ODE step
+                 eos        = None, # EOS instance
+                 leven      = [], # multipole indexes of even perturbations 
+                 lodd       = [], # multipole indexes of odd perturbations 
+                 dhfact     = -1e-12, # ODE step
                  ode_method = 'DOP853',
-                 ode_atol = 0.,
-                 ode_rtol = 1e-9, 
-                 output = []): 
+                 ode_atol   = 1e-9,
+                 ode_rtol   = 1e-9, 
+                 output     = []): 
 
         if not eos:
             raise ValueError("Must provide a EOS")
         self.eos = eos
 
-        # Solve perturbation equatins for these indexes
+        leven = np.array(leven)
+        lodd  = np.array(lodd)
+
+        # Solve perturbation equations for these indexes
         self.leven = leven[leven>1]
-        self.lodd = lodd[lodd>1]
+        self.lodd  = lodd[lodd>1]
 
         # Build variable list
         var = self.__buildvars()
         self.nvar = len(var)
-        self.var = dict(zip(v,range(nvar)))
+        self.var  = dict(zip(var, range(self.nvar)))
         self.ivar = {v: k for k, v in self.var.items()}
 
         # ODE solver options
@@ -71,7 +74,7 @@ class TOV(object):
 
         # output dir
         self.output = output 
-        self.__output_makedir(self,outdir=output)
+        self.__output_makedir(outdir=output)
 
         
     def __buildvars(self):
@@ -93,17 +96,17 @@ class TOV(object):
         https://arxiv.org/abs/0906.0096
         Note only C0 depends on ell: return an array of values
         """
-        r2 = r**2
-        r3 = r * r2
-        div_r = 1.0/r
-        div_r2 = div_r**2
-        exp_lam = 1.0 / (1.0 - 2.0 * m * div_r ) # Eq. (18)
+        r2       = r**2
+        r3       = r * r2
+        div_r    = 1.0/r
+        div_r2   = div_r**2
+        exp_lam  = 1.0 / (1.0 - 2.0 * m * div_r ) # Eq. (18)
         if not dnu_dr:
             dnu2 = (2.0 * (m + 4.0 * np.pi * r3 * p) / (r * (r - 2.0 * m)))**2
         else:
             dnu2 = dnu_dr**2
         C1 = 2.0/r + exp_lam * ( 2*m*div_r2 + 4*np.pi*r*(p-e) ) 
-        C0 = np.zeros_like(np.amax(ell))
+        C0 = np.zeros(max(ell)+1)
         for l in ell:
             Lam = l*(l+1)
             C0[l] = -dnu2
@@ -123,12 +126,13 @@ class TOV(object):
         div_r3 = div_r*div_r2
         exp_lam = 1.0 / (1.0 - 2.0 * m * div_r ) # Eq. (18)
         C1 = exp_lam * ( 2*m + 4*np.pi*r3*(p-e) ) * div_r2
-        C0 = np.zeros_like(np.amax(ell))
+        C0 = np.zeros(max(ell)+1)
         for l in ell:
             Lam = l*(l+1)
             C0[l] = exp_lam*( -Lam*div_r2 + 6*m*div_r3 - 4*np.pi*(e-p) )
-    
-    def __tov_rhs(self,x,y):
+        return C1, C0
+
+    def __tov_rhs(self,h,y):
         """
         ODE r.h.s. for TOV equations with pseudo-enthalpy independent variable.
         Implements Eqs. (5) and (6) of Lindblom, Astrophys. J. 398, 569 (1992).
@@ -138,41 +142,42 @@ class TOV(object):
         """
         dy = np.zeros_like(y)
         # Unpack y
-        r = y[self.ivar['r']]
-        m = y[self.ivar['m']]
-        nu = y[self.ivar['nu']]
+        r  = y[self.var['r']]
+        m  = y[self.var['m']]
         # EOS call
-        p = self.eos.PressureOfPseudoEnthalpyGeometerized(h)
-        e = self.eos.EnergyDensityOfPseudoEnthalpyGeometerized(h)
-        dedp = self.eos.EnergyDensityDerivOfPressureGeometerized(p);
+        p    = self.eos.Pressure_Of_PseudoEnthalpy(h)
+        e    = self.eos.EnergyDensity_Of_PseudoEnthalpy(h)
+        dedp = self.eos.EnergyDensityDeriv_Of_Pressure(p)
+        # print(f'vars: r:{r} m:{m} h:{h} p:{p} e:{e}')
         # TOV
-        dr_dh = -r * (r - 2.0 * m) / (m + 4.0 * np.pi * r**3 * p)
-        dm_dh = 4.0 * np.pi * r**2 * e * dr
+        dr_dh  = -r * (r - 2.0 * m)/(m + 4.0*np.pi*r**3*p)
+        dm_dh  = 4.0 * np.pi * r**2 * e * dr_dh 
         dnu_dr =  2.0 * (m + 4.0 * np.pi * r**3 * p) / (r * (r - 2.0 * m))
-        dy[self.ivar['r']] = dr_dh
-        dy[self.ivar['m']] = dm_dh
-        dy[self.ivar['nu']] = dnu_dr * dr_dh        
+        dy[self.var['r']] = dr_dh
+        dy[self.var['m']] = dm_dh
+        dy[self.var['nu']] = dnu_dr * dr_dh        
+        # print('derivs:', dr_dh, dm_dh, dnu_dr)
         # Even perturbations
-        C0,C1 = self.__pert_even(self.leven,m,r,p,e,dedp,dnu_dr)
+        C1,C0 = self.__pert_even(self.leven,m,r,p,e,dedp,dnu_dr)
         for l in self.leven:
-            H = y[self.ivar['H{}'.format(l)]]
-            dH = y[self.ivar['dH{}'.format(l)]]
-            dH_dh = dH * dr_dh;
-            ddH_dh = -(C0[l] * H + C1 * dH) * dr_dh;
-            dy[self.ivar['H{}'.format(l)]] = dH_dh
-            dy[self.ivar['dH{}'.format(l)]] = ddH_dh    
+            H = y[self.var['H{}'.format(l)]]
+            dH = y[self.var['dH{}'.format(l)]]
+            dH_dh = dH * dr_dh
+            ddH_dh = -(C0[l] * H + C1 * dH) * dr_dh
+            dy[self.var['H{}'.format(l)]] = dH_dh
+            dy[self.var['dH{}'.format(l)]] = ddH_dh    
         # Odd perturbations
-        C0,C1 = self.__pert_odd(self.leven,m,r,p,e,dedp)
+        C1,C0 = self.__pert_odd(self.lodd,m,r,p,e,dedp)
         for l in self.lodd:
-            Psi = y[self.ivar['Psi{}'.format(l)]]
-            dPsi = y[self.ivar['dPsi{}'.format(l)]]
-            dPsi_dh = dH * dr_dh;
-            ddPsi_dh = -(C0[l] * Psi + C1 * dPsi) * dr_dh;
-            dy[self.ivar['Psi{}'.format(l)]] = dPsi_dh
-            dy[self.ivar['dPsi{}'.format(l)]] = ddPsi_dh    
+            Psi  = y[self.var['Psi{}'.format(l)]]
+            dPsi = y[self.var['dPsi{}'.format(l)]]
+            dPsi_dh = dH * dr_dh
+            ddPsi_dh = -(C0[l] * Psi + C1 * dPsi) * dr_dh
+            dy[self.var['Psi{}'.format(l)]] = dPsi_dh
+            dy[self.var['dPsi{}'.format(l)]] = ddPsi_dh    
         return dy
 
-    def __initial_data(self,pc,dhfact=-1e-3,verbose=False):
+    def __initial_data(self,pc,dh_fact=-1e-12,verbose=False):
         """
         Set initial data for the solution of TOV equations using the pseudo-enthalpy formalism introduced in:
         Lindblom (1992) "Determining the Nuclear Equation of State from Neutron-Star Masses and Radii", Astrophys. J. 398 569.
@@ -180,12 +185,12 @@ class TOV(object):
         """
         y = np.zeros(self.nvar)
         # Central values 
-        ec = self.eos.EnergyDensityOfPressureGeometerized(pc)
-        hc = self.eos.PseudoEnthalpyOfPressureGeometerized(pc)
-        dedp_c = self.eos.EnergyDensityDerivOfPressureGeometerized(pc)
+        ec     = self.eos.EnergyDensity_Of_Pressure(pc)
+        hc     = self.eos.PseudoEnthalpy_Of_Pressure(pc)
+        dedp_c = self.eos.EnergyDensityDeriv_Of_Pressure(pc)
         dhdp_c = 1.0 / (ec + pc)
         dedh_c = dedp_c / dhdp_c
-        dh = dh_fact * hc
+        dh = -1e-12 * hc
         h0 = hc + dh
         h1 = 0.0 - dh
         r0 = np.sqrt(-3.0 * dh / (2.0 * np.pi * (ec + 3.0 * pc)))
@@ -193,67 +198,99 @@ class TOV(object):
         # Series expansion for the initial core 
         r0 *= 1.0 + 0.25 * dh * (ec - 3.0 * pc  - 0.6 * dedh_c) / (ec + 3.0 * pc) # second factor Eq. (7) of Lindblom (1992) 
         m0 *= 1.0 + 0.6 * dh * dedh_c / ec # second factor of Eq. (8) of Lindblom (1992) 
-        y['r'] = r0
-        y['m'] = m0
-        y['nu'] = 0.0
+        y[self.var['r']]  = r0
+        y[self.var['m']]  = m0
+        y[self.var['nu']] = 0.0
         #  Initial data for the ell-perturbation
         a0 = 1.0
         for l in self.leven:
-            y[self.ivar['H{}'.format(l)]] = a0 * r0**l
-            y[self.ivar['dH{}'.format(l)]] = a0 * l * r0**(l-1)
-        for l in self.leven:
-            y[self.ivar['Psi{}'.format(l)]] = a0 * r0**(l+1)
-            y[self.ivar['dPsi{}'.format(l)]] = a0 * (l+1) * r0**l
-        if verbose:
-            print("pc = {:.8e} hc = {:.8e} dh = {:.8e} h0  = {:.8e}".format(pc,hc,dh,h0))
+            y[self.var['H{}'.format(l)]] = a0 * r0**l
+            y[self.var['dH{}'.format(l)]] = a0 * l * r0**(l-1)
+        for l in self.lodd:
+            y[self.var['Psi{}'.format(l)]] = a0 * r0**(l+1)
+            y[self.var['dPsi{}'.format(l)]] = a0 * (l+1) * r0**l
+        # if verbose:
+        #     print("pc = {:.8e} hc = {:.8e} dh = {:.8e} h0  = {:.8e}".format(pc,hc,dh,h0))
+        #     print(y, self.ivar)
         return y, h0, h1
     
-    def solve(self,pc,dh_fact=-1e-3):
+    def solve(self,pc):
         """
         Solves the Tolman-Oppenheimer-Volkov stellar structure equations using the pseudo-enthalpy formalism introduced in:
         Lindblom (1992) "Determining the Nuclear Equation of State from Neutron-Star Masses and Radii", Astrophys. J. 398 569.
         """
         # Initial data
-        y, h0, h1 = self.__initial_data(pc, dh_fact=dh_fact)
+        y, h0, h1 = self.__initial_data(pc, dh_fact=self.dhfact, verbose=True)
         # Integrate
+        print("Integrating TOV equations")
+        print("h0 = {:.8e} h1 = {:.8e}".format(h0,h1))
         sol = solve_ivp(self.__tov_rhs, [h0, h1], y,
-                        max_step = h1, 
+                        first_step = abs(self.dhfact),
                         method = self.ode_method,
                         rtol = self.ode_rtol,
                         atol = self.ode_atol)
+    
         # Take one final Euler step to get to surface 
-        y = sol.y[:,-1]
+        y  = sol.y[:,-1]
         dy = self.__tov_rhs(sol.t[-1],y)
         y[:] -= dy[:] * h1
-        sol.y.append(y)
+        np.append(sol.y, y)
         # Mass, Radius & Compactness
         M,R,C = self.__compute_mass_radius(y)
         # Match to Schwarzschild exterior
-        sol.y[self.ivar['nu'],:] += np.log(1.0-(2.*M)/R) - sol.y[self.ivar['nu'],-1]
+        sol.y[self.var['nu'],:] += np.log(1.0-(2.*M)/R) - sol.y[self.var['nu'],-1]
         # Even Love number k2 (for testing purposes only)
         #yyl = R*y[self.ivar['dH2']]/y[self.ivar['H2']]
         #k2 = self.__compute_Love_even_ell2(self, self.C,yyl)
         # Even Love numbers
+
+        self.sol = sol
+
         k = {}
         for l in self.leven:
-            yyl = R*y[self.ivar['dH{}'.format(l)]]/y[self.ivar['H{}'.format(l)]]
-            k[l] = self.__compute_Love_even(l,self.C,yyl)                   
+            yyl = R*y[self.var['dH{}'.format(l)]]/y[self.var['H{}'.format(l)]]
+            k[l] = self.__compute_Love_even(l,C,yyl)                   
         # Odd Love numbers
         j = {}
         for l in self.lodd:
-            yyl = R*y[self.ivar['dPsi{}'.format(l)]]/y[self.ivar['Psi{}'.format(l)]]
-            j[l] self.__compute_Love_odd(l,self.C,yyl)
+            yyl = R*y[self.var['dPsi{}'.format(l)]]/y[self.var['Psi{}'.format(l)]]
+            j[l]= self.__compute_Love_odd(l,C,yyl)
         # Dump output
         if self.output:
             self.__output_solution(self,self.output,sol)
         return M,R,C,k,j
 
+    def __compute_legendre(self, c, l):
+        """
+        Computes Legendre function values returning Pl2(x), Ql2(x) and their derivatives at x = 1/c -1
+        """
+        x = 1/c -1
+        L = np.linspace(0,l-1,l)
+        nP = -prod((2*l-1)/2-L)/gamma(l) * 2**l * l*(l-1)
+        nQ = gamma(l)/factorial2(2*l+1)*(l+1)*(l+2)
+
+        Pl2 = 0
+        dPl2 = 0
+        for i in np.linspace(2,l,l-2+1):
+            i = int(i)
+            Pl2 = Pl2 + gamma(i)/gamma(i-2) * comb(l,i) * prod((l+i-1)/2-L) / gamma(l) * x**(i-2)
+            dPl2 = dPl2 + gamma(i)/gamma(i-2) * comb(l,i) * prod((l+i-1)/2-L) / gamma(l) * (i-2) * x**(i-3)
+        
+        dPl2 = 2**l*(-2*x)*Pl2/nP + 2**l*(1-x**2)*dPl2/nP
+        Pl2  = 2**l*(1-x**2)*Pl2/nP
+
+        Ql2  = 1/nQ * np.sqrt(np.pi)/2**(l+1) * gamma(l+3)/gamma(l+3/2) * (x**2-1)/x**(l+3) * hyp2f1((l+3)/2, (l+4)/2,l+3/2,1/x**2)
+        dQl2 = 1/nQ * np.sqrt(np.pi)/2**(l+1) * gamma(l+3)/gamma(l+3/2) * (2*x**(-2 - l)*hyp2f1((l+3)/2, (l+4)/2,l+3/2,1/x**2) +\
+                                                            (-3 - l)*x**(-4 - l)*(-1 + x**2)*hyp2f1((l+3)/2, (l+4)/2,l+3/2,1/x**2) -\
+                                                            (2*((l+3)/2)*((l+4)/2)*x**(-6 - l)*(-1 + x**2)*hyp2f1((l+3)/2+1, (l+4)/2+1,l+3/2+1,1/x**2)/(l+3/2)))
+        return Pl2,dPl2,Ql2,dQl2
+    
     def __compute_mass_radius(self, y):
         """
         Compute mass, radius, & compactness
         """
-        R = y[self.ivar['r']]
-        M = y[self.ivar['m']]
+        R = y[self.var['r']]
+        M = y[self.var['m']]
         return M,R,M/R
 
     def __compute_baryon_mass(self, sol):
@@ -262,18 +299,18 @@ class TOV(object):
         """
         r = sol.y[self.ivar['r'],:]
         m = sol.y[self.ivar['m'],:]
-        e = self.EOSEnergyDensityOfPseudoEnthalpyGeometerized(sol.t,eos)
-        return np.trapz( 4*np.pi*r**2.*e./np.sqrt(1-2*m./r), r );
+        e = self.EOSEnergyDensityOfPseudoEnthalpyGeometerized(sol.t,self.eos)
+        return np.trapz( 4*np.pi*r**2.*e/np.sqrt(1-2*m/r), r );
 
     def __compute_proper_radius(self, sol):
         """
         Compute baryon mass
         """
-        r = sol.y[self.ivar['r'],:]
-        m = sol.y[self.ivar['m'],:]
-        return np.trapz( r, 1./np.sqrt((1-2*m./r)), r );
+        r = sol.y[self.var['r'],:]
+        m = sol.y[self.var['m'],:]
+        return np.trapz( r, 1./np.sqrt((1-2*m/r)), r )
         
-    def __compute_Love_even_ell2(self, c,y):
+    def __compute_Love_even_ell2(self,c,y):
         """
         Eq. (50) of Damour & Nagar, Phys. Rev. D 80 084035 (2009).
         """
@@ -286,7 +323,7 @@ class TOV(object):
         num = (8.0 / 5.0) * a2 * c5 * (2 * c * (y - 1) - y + 2)
         den = 2 * c * (4 * (y + 1) * c4 + (6 * y - 4) * c3 + (26 - 22 * y) * c2 + 3 * (5 * y - 8) * c - 3 * y + 6)
         den -= 3 * a2 * (2 * c * (y - 1) - y + 2) * np.log(1.0/a)
-        return num / den;
+        return num / den
 
     def __compute_Love_odd(self,ell,c,y):
         """
@@ -359,7 +396,9 @@ class TOV(object):
             dk = (286*c*(4*(90090 + c*(-900900 + c*(3768765 + c*(-8528520 + c*(11259633 + 2*c*(-4349499 + c*(1858341 + 8*c*(-47328 + c*(3092 + (-1 + c)*c))))))))) + (-1 + c)*(-1 + 2*c)*(-45045 + 4*c*(90090 + c*(-285285 + c*(450450 + c*(-365211 + 4*c*(34881 + c*(-4887 + 2*c*(36 + c))))))))*y) - 45045*(1 - 2*c)**2*(2*c*(c*(2*c*(2*c*(-737*(-4 + y) + 374*c*(-3 + y) - 92*c2*(-2 + y) + 8*c**3*(-1 + y)) + 1573*(-5 + y)) - 1859*(-6 + y)) + 572*(-7 + y)) - 143*(-8 + y))*np.log(1.0/(1 - 2*c)))
             k = 256/2431 * c17 * nk/dk
         else:
-            #TODO k = ComputeLegendre(c,y,l) # https://bitbucket.org/bernuzzi/tov/src/master/ComputeLegendre.m
+            # https://bitbucket.org/bernuzzi/tov/src/master/ComputeLegendre.m
+            Pl2, dPl2, Ql2, dQl2 = self.__compute_legendre(c, ell)
+            k = -1/2*c**(2*ell+1)*(dPl2-c*y*Pl2)/(dQl2-c*y*Ql2)
         return k
         
     def __compute_shape(self,ell,c,y,eps):
@@ -397,6 +436,12 @@ class TOV(object):
             nh = -9 + 27*c + 2*c3*(1 + y) - c2*(20 + y)
             dh = (21.*(2*c*(c2*(5360 - 1910*y) + c4*(1284 - 996*y) - 105*(-4 + y) + 8*c6*(1 + y) + 105*c*(-24 + 7*y)  + 40*c3*(-116 + 55*y) + c5*(-8 + 68*y)) - 15*(1 - 2*c)**2*(-7*(-4 + y) + 28*c*(-3 + y) - 34*c2*(-2 + y) + 12*c3*(-1 + y))*np.log(1.0/(1 - 2*c))))
             h = -64*c9*nh/dh
+        else:
+            Pl2, dPl2, Ql2, dQl2 = self.__compute_legendre(c,ell)
+            term1 = (1-2*c)/c
+            term2 = 1/(ell-1)/(ell+2) * (2*c*y + ell*(ell+1) + 4*c**2/(1-2*c) - 2*(1-2*c))
+            factor = c**(ell+1)*Pl2 * (1-(dPl2/Pl2-c*y)/(dQl2/Ql2-c*y))
+            h = (term1 + term2) * factor
         return h
     
     def __compute_Love(self,ell,c,y,eps):
@@ -422,7 +467,7 @@ class TOV(object):
         Note: Yagi's $\bar{\lambda}_\ell$ is $\Lambda_\ell$
         """
         div = 1.0/(factorial2(2*ell-1)*C**(2*ell+1))
-        return 2.*kl*div
+        return 2.*k*div
     
     def __output_makedir(self,outdir=None):
         """
@@ -448,8 +493,6 @@ class TOV(object):
     
     #TODO
 
-    
-    
     def __plot_mass_radius(self):
         """
         """
@@ -479,13 +522,51 @@ class TOV(object):
 
 
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
     
-    
-    
-    #TODO tests
-    
-    
+#     from units import Units
+#     uts = Units()
 
+#     #TODO tests
+#     print("Settin up")
+#     this_eos = EOS.EOSPiecewisePolytropic('SLy')
+#     this_tov = TOV(eos = this_eos,  leven = [2], 
+#                                     lodd = [3], 
+#                                     #ode_method='RK45',
+#                                     ode_atol=1e-10, 
+#                                     ode_rtol=1e-10, 
+#                                     dhfact=-1e-12
+#                                 )
 
-    
+#     import matplotlib.pyplot as plt
+
+#     fig, ax = plt.subplots(2, sharex=True)
+#     for i, pc in enumerate(np.logspace(-12, -9, 20)):
+
+#         M,R,C,k,j = this_tov.solve(pc)
+#         R *= 1./1e3
+#         M *= 1./uts.constant['MRSUN_SI'][0]
+#         print(i, pc, R, M)
+#         ax[0].scatter(R, M)
+#         ax[1].scatter(R, k[2])
+#     #plt.plot(this_tov.sol.y[this_tov.var['r']], this_tov.sol.y[this_tov.var['m']])
+#     #plt.show()
+
+#     # read in te M(R) sequence from a file
+#     _, m,_,r,_,kl,_ = np.loadtxt('../dat/SLy_sequence.txt', unpack=True)
+
+#     G    = 6.67408*1e-11
+#     c    = 299792458.
+#     Msun = 1.989*1e30
+#     GMsun_c2 = G*Msun/c**2
+
+#     ax[0].plot(r*GMsun_c2/1e3, m)
+#     ax[1].plot(r*GMsun_c2/1e3, kl)
+
+#     # compute the pressure at the surface
+#     # pressures = [this_eos.Pressure_Of_PseudoEnthalpy(this_tov.sol.t[i]) for i in range(len(this_tov.sol.t))]
+#     # plt.semilogy(this_tov.sol.y[this_tov.var['r']], pressures)
+#     ax[1].set_xlabel('R')
+#     ax[0].set_ylabel('M')
+#     ax[1].set_ylabel('k_2')
+#     plt.show()
