@@ -44,8 +44,7 @@ class TOV(object):
                  dhfact     = -1e-12, # ODE step
                  ode_method = 'DOP853',
                  ode_atol   = 1e-9,
-                 ode_rtol   = 1e-9, 
-                 output     = []): 
+                 ode_rtol   = 1e-9): 
 
         if not eos:
             raise ValueError("Must provide a EOS")
@@ -71,10 +70,6 @@ class TOV(object):
         self.ode_method = ode_method        
         self.ode_atol = ode_atol
         self.ode_rtol = ode_rtol
-
-        # output dir
-        self.output = output 
-        self.__output_makedir(outdir=output)
 
         
     def __buildvars(self):
@@ -261,9 +256,7 @@ class TOV(object):
             for l in self.lodd:
                 yyl = R*y[self.var['dPsi{}'.format(l)]]/y[self.var['Psi{}'.format(l)]]
                 j[l]= self.__compute_Love_odd(l,C,yyl)
-        # Dump output
-        if self.output:
-            self.__output_solution(self,self.output,sol)
+
         if len(self.leven)!= 0 and len(self.lodd)!= 0:
             return M,R,C,k,h,j
         elif len(self.leven)!= 0 and len(self.lodd)== 0:
@@ -434,14 +427,14 @@ class TOV(object):
             nh = (-2 + 6*c + 2*c3*(1 + y) - c2*(6 + y))
             dh = (2*c*(6 + c2*(26 - 22*y) - 3*y + 4*c4*(1 + y) + 3*c*(-8 + 5*y) + c3*(-4 + 6*y)) - 3*(1 - 2*c)**2*(2 + 2*c*(-1 + y) - y)*np.log(1.0/(1 - 2*c)))
             h = -8*c5*nh/dh
-        elif ell == 3:
-            nh = -5 + 15*c + 2*c3*(1 + y) - c2*(12 + y)
-            dh = (5.*(2*c*(15*(-3 + y) + 4*c5*(1 + y) - 45*c*(-5 + 2*y) - 20*c3*(-9 + 7*y) + 2*c4*(-2 + 9*y) + 5*c2*(-72 + 37*y)) - 15*(1 - 2*c)**2*(-3 - 3*c*(-2 + y) + 2*c2*(-1 + y) + y)*np.log(1.0/(1 - 2*c))))
-            h = 16*c7*nh/dh
-        elif ell == 4:
-            nh = -9 + 27*c + 2*c3*(1 + y) - c2*(20 + y)
-            dh = (21.*(2*c*(c2*(5360 - 1910*y) + c4*(1284 - 996*y) - 105*(-4 + y) + 8*c6*(1 + y) + 105*c*(-24 + 7*y)  + 40*c3*(-116 + 55*y) + c5*(-8 + 68*y)) - 15*(1 - 2*c)**2*(-7*(-4 + y) + 28*c*(-3 + y) - 34*c2*(-2 + y) + 12*c3*(-1 + y))*np.log(1.0/(1 - 2*c))))
-            h = -64*c9*nh/dh
+        # elif ell == 3:
+        #     nh = -5 + 15*c + 2*c3*(1 + y) - c2*(12 + y)
+        #     dh = (5.*(2*c*(15*(-3 + y) + 4*c5*(1 + y) - 45*c*(-5 + 2*y) - 20*c3*(-9 + 7*y) + 2*c4*(-2 + 9*y) + 5*c2*(-72 + 37*y)) - 15*(1 - 2*c)**2*(-3 - 3*c*(-2 + y) + 2*c2*(-1 + y) + y)*np.log(1.0/(1 - 2*c))))
+        #     h = 16*c7*nh/dh
+        # elif ell == 4:
+        #     nh = -9 + 27*c + 2*c3*(1 + y) - c2*(20 + y)
+        #     dh = (21.*(2*c*(c2*(5360 - 1910*y) + c4*(1284 - 996*y) - 105*(-4 + y) + 8*c6*(1 + y) + 105*c*(-24 + 7*y)  + 40*c3*(-116 + 55*y) + c5*(-8 + 68*y)) - 15*(1 - 2*c)**2*(-7*(-4 + y) + 28*c*(-3 + y) - 34*c2*(-2 + y) + 12*c3*(-1 + y))*np.log(1.0/(1 - 2*c))))
+        #     h = -64*c9*nh/dh
         else:
             Pl2, dPl2, Ql2, dQl2 = self.__compute_legendre(c,ell)
             term1 = (1-2*c)/c
