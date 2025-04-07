@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-
+"""
+Module for physical constants and conversion factors
+"""
 class Units(object):
 
     """
@@ -7,6 +9,13 @@ class Units(object):
     Class for physical constants and conversion factors
     
     https://lscsoft.docs.ligo.org/lalsuite/lal/_l_a_l_constants_8h_source.html
+            
+    ### Example:
+    >>> from units import Units
+    >>> uts = Units()
+    >>> print(uts.cgs_to_si('mass'))
+    >>> print(uts.si_to_cgs('mass'))
+    >>> print(uts.const('MSUN_SI'))
 
     """
 
@@ -15,12 +24,7 @@ class Units(object):
         '''
         Physical constants and conversion of units between cgs, SI and geometrized units
 
-        ### Example:
-        >>> from units import Units
-        >>> uts = Units()
-        >>> print(uts.cgs_to_si('mass'))
-        >>> print(uts.si_to_cgs('mass'))
-        >>> print(uts.const('MSUN_SI'))
+
 
         
         '''
