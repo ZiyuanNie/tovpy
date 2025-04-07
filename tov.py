@@ -309,8 +309,8 @@ class TOV(object):
         """
         Compute baryon mass
         """
-        r = sol.y[self.ivar['r'],:]
-        m = sol.y[self.ivar['m'],:]
+        r = sol.y[self.var['r'],:]
+        m = sol.y[self.var['m'],:]
         # e = self.EOSEnergyDensityOfPseudoEnthalpyGeometerized(sol.t,self.eos)
         e = np.array([self.eos.EnergyDensity_Of_PseudoEnthalpy(sol.t[i]) for i in range(len(sol.t))])
         return np.trapz( 4*np.pi*r**2.*e/np.sqrt(1-2*m/r), r )
@@ -323,21 +323,6 @@ class TOV(object):
         m = sol.y[self.var['m'],:]
         return np.trapz( r, 1./np.sqrt((1-2*m/r)), r )
         
-    def __compute_Love_even_ell2(self,c,y):
-        """
-        Eq. (50) of Damour & Nagar, Phys. Rev. D 80 084035 (2009).
-        """
-        a = 1. - 2. * c
-        a2 = a**2
-        c2 = c**2
-        c3 = c * c2
-        c4 = c * c3
-        c5 = c * c4
-        num = (8.0 / 5.0) * a2 * c5 * (2 * c * (y - 1) - y + 2)
-        den = 2 * c * (4 * (y + 1) * c4 + (6 * y - 4) * c3 + (26 - 22 * y) * c2 + 3 * (5 * y - 8) * c - 3 * y + 6)
-        den -= 3 * a2 * (2 * c * (y - 1) - y + 2) * np.log(1.0/a)
-        return num / den
-
     def __compute_Love_odd(self,ell,c,y):
         """
         Compute odd parity Love numbers given 
@@ -465,22 +450,6 @@ class TOV(object):
             h = (term1 + term2) * factor
         return h
     
-    def Compute_Love(self,ell,c,y,eps):
-        """
-        Compute Love numbers given 
-        * the multipolar index ell
-        * the compactness c
-        * the ratio y = R H(R)'/H(R) or R Psi'(R)/Psi(R)
-        * parity (0='even', 1 = 'odd')
-        """
-        if ell < 2: return 
-        if eps % 2:
-            # Odd
-            return self.compute_Love_odd(ell,c,y)
-        else:
-            # Even
-            return self.compute_Love_even(ell,c,y)
-
     def Compute_Lambda(self,ell,k,C):
         r"""
         Compute tidal polarizability $\Lambda_\ell$
@@ -489,25 +458,5 @@ class TOV(object):
         """
         div = 1.0/(factorial2(2*ell-1)*C**(2*ell+1))
         return 2.*k*div
-    
-    def __output_makedir(self,outdir=None):
-        """
-        Make output dir
-        """
-        if not outdir: return
-        if not os.path.exists(outdir):
-            os.makedirs(outdir)
-        else:
-            shutil.rmtree(outdir) # removes all the subdirs
-            os.makedirs(outdir)
-        return
-        
-    def __output_solution(self,outdir,sol):
-        """
-        Dump ODE solution
-        """
-        with open(outdir+"/tov.txt",'w') as f:
-            np.savetxt(f,np.c_[sol.t,sol.y],fmt='%.9e',header=' '.join(self.var.key()), comments='')
-        return
-    
+
     # TOVSolver ---
