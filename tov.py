@@ -9,7 +9,7 @@ import numpy as np
 from numpy import log, exp
 import scipy as sp
 from scipy.integrate import solve_ivp, odeint
-from scipy.special import factorial2, gamma, factorial2, hyp2f1
+from scipy.special import factorial2, gamma, factorial2, hyp2f1, poch
 import matplotlib.pyplot as plt
 from scipy.optimize import fsolve, bisect
 from math import comb, prod
@@ -290,6 +290,24 @@ class TOV(object):
                                                             (2*((l+3)/2)*((l+4)/2)*x**(-6 - l)*(-1 + x**2)*hyp2f1((l+3)/2+1, (l+4)/2+1,l+3/2+1,1/x**2)/(l+3/2)))
         return Pl2,dPl2,Ql2,dQl2
     
+    def __compute_psi(self, c, l):
+        x = 1/c
+        CoefficientP = poch(5, l-2) / poch (2-l, l-2) / poch(3+l, l-2) * gamma(l-2) * 2 ** (l-2)
+        CoefficientQ = -1 / (l+2)
+        psiP = x**3 * hyp2f1(2-l, 3+l, 5, x/2) * CoefficientP
+        psiQ = - (l+2) * x**(-1-l) * ((1+l) * x * hyp2f1(-1+l,2+l,2+2*l,2/x) + (-1+l)*hyp2f1(l,3+l,3+2*l,2/x) )/(1+l) * CoefficientQ
+        dPsiP = 3 * x**2 * hyp2f1(2-l, 3+l, 5, x/2) - 1/10 * (-6 + l + l**2) * x**3 * hyp2f1(3-l, 4+l, 6, x/2)
+        dPsiP = dPsiP * CoefficientP
+        dPsiQ = 1/(1+l)/(3+2*l) * (2+l) * x**(-3-l) * (
+            l*(3+5*l+2*l**2)*x**2*hyp2f1(-1+l, 2+l, 2+2*l, 2/x) +
+            (-1+l)*(
+                (3+2*l)**2*x*hyp2f1(l, 3+l, 3+2*l, 2/x) +
+                2*l*(3+l)*hyp2f1(1+l, 4+l, 4+2*l, 2/x)
+            )
+        )
+        dPsiQ = dPsiQ * CoefficientQ
+        return psiP, dPsiP, psiQ, dPsiQ
+
     def __compute_mass_radius(self, y):
         """
         Compute mass, radius, & compactness
@@ -334,13 +352,9 @@ class TOV(object):
             dj =  5.*(2*c*(9 + 3*c*(-3 + y) + 2*c2*(-3 + y) + 2*c3*(-3 + y) - 3*y + 12*c4*(1 + y)) + 3*(-1 + 2*c)*(-3 + y)*log(1 - 2*c))
             j = nj/dj
         else:
-            print("Odd Love numbers not implemented for ell > 2")
-           # TODO: implement for ell > 2
-           #     j = - c**(2*ell+1) * ()
-           # might require introduction of -(1/8) r^3 C[1] Hypergeometric2F1[2 - l, 3 + l, 5, r/2] + C[2] MeijerG[{{}, {1 - l, 2 + l}}, {{-1, 3}, {}}, r/2]}
-           # These are my mathematica results, but the derivative of meijierG and hypergeometric functions might also cause issues
-           # and that at l = 2, the result of MeijerG is not proportional to (C[2] (-12 - 8 r - 6 r^2 - 6 r^3 - 3 r^4 Log[2 - r] + 3 r^4 Log[r]))/(96 r)
-           # more maths required
+            PsiP, dPsiP, PsiQ, dPsiQ = self.__compute_psi(c,ell)
+            factor =  - c ** (2 * ell + 1)
+            j = factor * (dPsiP - c * y * PsiP) / (dPsiQ - c * y * PsiQ)
         return j
     
     def __compute_Love_even(self,ell,c,y):
