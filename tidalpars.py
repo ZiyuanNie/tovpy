@@ -29,9 +29,9 @@ def nu_of_q(nu):
     assume q>=1
     """
     if nu==0:
-        q = [];
+        q = []
     else:
-        q = (1. + np.sqrt(1 - 4.*nu) - 2.*nu)/(2.*nu);
+        q = (1. + np.sqrt(1 - 4.*nu) - 2.*nu)/(2.*nu)
     return q
 
 def eta_of_q(nu):
@@ -43,7 +43,7 @@ def eta_of_q(nu):
     return nu_of_q(nu)
 
 def Lamtilde_of_eta_Lam1_Lam2(eta, Lam1, Lam2):
-    """
+    r"""
     $\tilde\Lambda(\eta, \Lambda_1, \Lambda_2)$.
     Lambda_1 is assumed to correspond to the more massive (primary) star m_1.
     Lambda_2 is for the secondary star m_2.
@@ -91,11 +91,11 @@ def Yagi2013_fitcoefs(ell):
     Note: Yagi's $\bar{\lambda}_\ell$ is $\Lambda_\ell$
     """
     if ell==3:
-        c = [-1.15,1.18,2.51e-2,-1.31e-3,2.52e-5];
+        c = [-1.15,1.18,2.51e-2,-1.31e-3,2.52e-5]
     elif ell==4:
-        c = [-2.45,1.43,3.95e-2,-1.81e-3,2.8e-5];
+        c = [-2.45,1.43,3.95e-2,-1.81e-3,2.8e-5]
     else:
-        c = [];
+        c = []
     return c
 
 def Yagi2013_fit_Laml(Lam2, ell):
