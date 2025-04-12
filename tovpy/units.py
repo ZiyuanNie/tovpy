@@ -1,7 +1,21 @@
 #!/usr/bin/env python3
 """
-Module for physical constants and conversion factors
+Copyright (C) 2024 Sebastiano Bernuzzi and others
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
 """
+
 class Units(object):
 
     """
@@ -20,15 +34,9 @@ class Units(object):
     """
 
     def __init__(self):
-
-        '''
+        """
         Physical constants and conversion of units between cgs, SI and geometrized units
-
-
-
-        
-        '''
-        
+        """
         self.constant = {
             'C_SI': (299792458e0, 'Speed of light in vacuum, m s^-1'),
             'C_CGS': (299792458e0 * 100, 'Speed of light in vacuum, cm s^-1'),
@@ -185,5 +193,3 @@ if __name__ == "__main__":
     uts = Units()
     uts.show()
 
-    #print(uts.const('MSUN_SI'))
-    #print(uts.geom_to_si('mass'))

@@ -1,7 +1,18 @@
-#!/usr/bin/env python3
+"""
+Copyright (C) 2024 Sebastiano Bernuzzi and others
 
-""" 
-Various classes for barotropic equations of state (EOS)
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
 """
 
 import sys, os, shutil
@@ -13,15 +24,14 @@ from scipy.special import factorial2, gamma, factorial2, hyp2f1, poch
 import matplotlib.pyplot as plt
 from scipy.optimize import fsolve, bisect
 from math import comb, prod
-import tovpy.eos as EOS
-import tovpy.units
 
-
-
+import eos as EOS
+import units
 
 class TOV(object):
     
     """ 
+
     Class to solve the Tolman-Oppenheimer-Volkov stellar structure
     equations together with even/odd parity stationary bartropic perturbations
     
@@ -31,10 +41,10 @@ class TOV(object):
     Work in geometric units
 
     Reference codes:
+    * https://lscsoft.docs.ligo.org/lalsuite/lalsimulation/_l_a_l_sim_neutron_star_t_o_v_8c_source.html
+    * https://bitbucket.org/bernuzzi/tov/src/master/TOVL.m
+    * https://lscsoft.docs.ligo.org/bilby/_modules/bilby/gw/eos/tov_solver.html
 
-    https://lscsoft.docs.ligo.org/lalsuite/lalsimulation/_l_a_l_sim_neutron_star_t_o_v_8c_source.html
-    https://bitbucket.org/bernuzzi/tov/src/master/TOVL.m
-    https://lscsoft.docs.ligo.org/bilby/_modules/bilby/gw/eos/tov_solver.html
     """
 
     def __init__(self,
@@ -466,4 +476,4 @@ class TOV(object):
         div = 1.0/(factorial2(2*ell-1)*C**(2*ell+1))
         return 2.*k*div
 
-    # TOVSolver ---
+

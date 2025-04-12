@@ -1,18 +1,32 @@
 #!/usr/bin/env python3
+"""
+Copyright (C) 2024 Sebastiano Bernuzzi and others
 
-""" 
-Various classes for barotropic equations of state (EOS)
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
 """
 
 import sys, os, shutil
 import numpy as np
+from numpy import log, exp
 import scipy as sp
 from scipy.interpolate import CubicSpline
 from scipy import integrate
 import pandas as pd
 from io import StringIO
-import tovpy.units as units
-from numpy import log, exp
+
+import units as units
+
 
 # Data for piecewise polytropes with 4 pieces
 PIECEWISE_POLYTROPE_TABLE4 = """
@@ -200,8 +214,7 @@ class EOSPolytropic(object):
         h = self.PseudoEnthalpy_Of_BaryonRestMassDensity(rho)
         return h 
 
-    # EOSPolytropic ---
-
+# EOSPolytropic ---
 
 
 class EOSPiecewisePolytropic(object):
@@ -645,8 +658,7 @@ class EOSPiecewisePolytropic(object):
 
     #         Added some rho-functions
 
-    # EOSPiecewisePolytropic ---
-
+# EOSPiecewisePolytropic ---
 
 
 class EOSTabular(object):
@@ -768,6 +780,7 @@ class EOSTabular(object):
         self.interp_logPressure_from_logPseudoEnthalpy = CubicSpline(self.loghTab,self.logpTab)
         self.interp_logPseudoEnthalpy_from_logEnergyDensity = CubicSpline(self.logeTab,self.loghTab)
         self.interp_logPseudoEnthalpy_from_logPressure = CubicSpline(self.logpTab,self.loghTab)
+
     def __remove_leading_zero(self, table):
         """
         For interpolation of LALSimulation tables;
@@ -974,12 +987,12 @@ class EOSTabular(object):
     #     ids_lr_min = np.nonzero(np.logical_and(h < self.min_hTab, h > 0.0))
     #     ids_gt_min = np.nonzero(h >= self.min_hTab)
     #     logh = np.log(h)
-        #rho[ids_lr_min] = np.exp(self.logrhoTab[0] + 1.5 * (logh - self.loghTab[0]))
-        #logrho = #self.interp_RestMassDensity_from_PseudoEnthalpy(logh)
-        #rho[ids_gt_min] = np.log(logrho)
-        # if rho.size == 1:
-        #     return rho[0]
-        # return rho
+    #     rho[ids_lr_min] = np.exp(self.logrhoTab[0] + 1.5 * (logh - self.loghTab[0]))
+    #     logrho = #self.interp_RestMassDensity_from_PseudoEnthalpy(logh)
+    #     rho[ids_gt_min] = np.log(logrho)
+    #     if rho.size == 1:
+    #        return rho[0]
+    #     return rho
 
     """ e-funcions """
 
@@ -1043,8 +1056,7 @@ class EOSTabular(object):
         dedp = (e_upper - e_lower) / (2. * dp)
         return dedp
 
-    # EOSTabular ---
-
+# EOSTabular ---
 
 
 class EOS(object):
@@ -1110,20 +1122,17 @@ class EOS(object):
     def Pressure_Of_PseudoEnthalpy(self,x):
         return self.eos.Pressure_Of_PseudoEnthalpy(x)
     
-
-
-    # EOS ---
+# EOS ---
 
 
 
-# if __name__ == "__main__":
+if __name__ == "__main__":
 
+    p = 1e-3
+    eos = EOSPiecewisePolytropic('piecewise_poly_1',gamma=2,K=100)
+    print('Gamma=2 law EOS: e(p={})={}'.format(p,eos.EnergyDensity_Of_Pressure(p)))
 
-    
-#     eos = EOSPiecewisePolytropic('piecewise_poly_1',gamma=2,K=100)
-#     #eos = EOSPiecewisePolytropic('piecewise_poly_1',**{'gamma':2,'K':100})
-#     print(eos.EnergyDensity_Of_Pressure(1e-3))
+    eos = EOSPiecewisePolytropic('SLy')
+    print('SLy EOS: e(p={})={}'.format(p,eos.EnergyDensity_Of_Pressure(p)))
 
-#     ##eos = EOSPiecewisePolytropic('SLy')
-#     ##print(eos.EnergyDensity_Of_Pressure(1e-3))
 

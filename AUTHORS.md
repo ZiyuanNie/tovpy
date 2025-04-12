@@ -1,0 +1,7 @@
+# This is the list of TOVpy's significant contributors.
+#
+# This does not necessarily list everyone who has contributed code.
+# The full list of contributors can be retrived from the revision history. 
+Sebastiano Bernuzzi
+Rossella Gamba
+Ziyuan Nie

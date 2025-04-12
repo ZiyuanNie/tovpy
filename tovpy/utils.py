@@ -1,18 +1,36 @@
 """
-Toolbox for saving data and quick visualisation of results.
+Copyright (C) 2024 Sebastiano Bernuzzi and others
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
 """
 
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from tovpy.eos import EOS
-from tovpy.units import Units
+
+from eos import EOS
+from units import Units
+from tov import TOV
+
 uts = Units()
-from tovpy.tov import TOV
 
 class Utils:
+    
     """
+
     Utility class for saving data and quick visualisation of results.
+
     """
 
     def __init__(self, eos, p, path=None):
