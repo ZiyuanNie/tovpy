@@ -12,7 +12,7 @@ Note:
 and Nagar (2009)](https://doi.org/10.1103/PhysRevD.80.084035) 
 - The code supports EOS in piecewise polytropic and tabular form
 
-See [this file](AUTHORS.md) for authors and contributors.
+See [this file](AUTHORS) for authors and contributors.
 
 The code is distributed under the [GNU GPLv3
 licence](https://www.gnu.org/licenses/gpl-3.0.en.html). 
