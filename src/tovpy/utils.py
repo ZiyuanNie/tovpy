@@ -19,9 +19,9 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-from eos import EOS
-from units import Units
-from tov import TOV
+from tovpy.eos import EOS
+from tovpy.units import Units
+from tovpy.tov import TOV
 
 uts = Units()
 
@@ -92,7 +92,9 @@ class Utils:
         if savefigon:
             if filename is None:
                 filename = os.path.join(self.path, 'eos_plot.pdf')
-            plt.savefig(filename)
+            else:
+                filename = os.path.join(self.path, filename)
+            plt.savefig(filename, bbox_inches='tight')
         plt.show()
 
     def eos_txt(self, filename=None):
@@ -114,7 +116,9 @@ class Utils:
         # Save the data to a file
         if filename is None:
             filename = os.path.join(self.path, 'eos_data.txt')
-        np.savetxt(filename, data, header='Pressure EnergyDensity PseudoEnthalpy EnergyDensityDeriv', delimiter='\t', comments='')
+        else:
+            filename = os.path.join(self.path, filename)
+        np.savetxt(filename, data, header='Pressure EnergyDensity PseudoEnthalpy EnergyDensityDeriv', delimiter='\t')
 
     def MR_plot(self, savefigon= False, filename=None):
         """
@@ -164,6 +168,8 @@ class Utils:
         if savefigon:
             if filename is None:
                 filename = os.path.join(self.path, 'MR_plot.pdf')
+            else:
+                filename = os.path.join(self.path, filename)
             plt.savefig(filename)
         plt.show()
 
@@ -193,7 +199,9 @@ class Utils:
         # Save the data to a file
         if filename is None:
             filename = os.path.join(self.path, 'MR_data.txt')
-        np.savetxt(filename, np.column_stack((r_list, m_list, c_list)), header='Radius Mass Compactness', delimiter='\t', comments='')
+        else:
+            filename = os.path.join(self.path, filename)
+        np.savetxt(filename, np.column_stack((r_list, m_list, c_list)), header='Radius Mass Compactness', delimiter='\t')
 
     def Love_plot(self, leven, lodd, savefigon=False, filename=None):
         """
@@ -276,7 +284,9 @@ class Utils:
         if savefigon:
             if filename is None:
                 filename = os.path.join(self.path, 'Love_plot.pdf')
-            plt.savefig(filename)
+            else:
+                filename = os.path.join(self.path, filename)
+            plt.savefig(filename, bbox_inches='tight')
         plt.show()
 
     def Love_txt(self, leven, lodd, filename=None):
@@ -316,8 +326,10 @@ class Utils:
         # Save the data to a file
         if filename is None:
             filename = os.path.join(self.path, 'Love_data.txt')
+        else:
+            filename = os.path.join(self.path, filename)
         header = ('Pressure Mass Radius Compactness ' +
           ' '.join(f'k{l}' for l in leven) + ' ' +
           ' '.join(f'h{l}' for l in leven) + ' ' +
           ' '.join(f'j{l}' for l in lodd))
-        np.savetxt(filename, np.column_stack((self.p, m_list, r_list, c_list, *k_vars.values(), *h_vars.values(), *j_vars.values())), header=header, delimiter='\t', comments='')
+        np.savetxt(filename, np.column_stack((self.p, m_list, r_list, c_list, *k_vars.values(), *h_vars.values(), *j_vars.values())), header=header, delimiter='\t')

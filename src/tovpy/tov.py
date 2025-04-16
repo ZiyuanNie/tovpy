@@ -25,8 +25,8 @@ import matplotlib.pyplot as plt
 from scipy.optimize import fsolve, bisect
 from math import comb, prod
 
-import eos as EOS
-import units
+import tovpy.eos as EOS
+import tovpy.units
 
 class TOV(object):
     
