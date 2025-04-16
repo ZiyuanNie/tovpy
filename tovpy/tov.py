@@ -25,8 +25,10 @@ import matplotlib.pyplot as plt
 from scipy.optimize import fsolve, bisect
 from math import comb, prod
 
-import tovpy.eos as EOS
-import tovpy.units
+from . import eos
+from . import units
+from .eos import EOS
+from .units import Units
 
 class TOV(object):
     

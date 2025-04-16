@@ -9,7 +9,7 @@ from numpy import log10 as lg
 from scipy.interpolate import interp1d as sp_interp1d
 from numpy import pi
 from scipy.integrate import ode
-from tovpy.units import Units
+from tovpy import Units
 import os
 uts = Units()
 

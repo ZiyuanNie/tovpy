@@ -53,7 +53,7 @@ EOS_FILE_NAME = [
     'eos_SFHx_adb.rns'
 ]
 # Note that LS1800B0.rns, eosAPR, eosFP, eosFPS, eosSLy, eosWNV are not included in the list above
-from tovpy.tov import TOV
+from tovpy import TOV
 pc = np.logspace(-12, -8, 200)
 for eos_file in EOS_FILE_NAME:
     print(eos_file)

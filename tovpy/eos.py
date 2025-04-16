@@ -26,7 +26,7 @@ import pandas as pd
 from io import StringIO
 import pkg_resources
 
-import tovpy.units as units
+from . import units as units
 
 
 # Data for piecewise polytropes with 4 pieces
@@ -714,7 +714,7 @@ class EOSTabular(object):
             else:
                 filename = params.get('filename')
                 # Determine the directory of this file (eos.py)
-                module_dir = os.path.dirname(os.path.abspath(__file__))
+                module_dir = os.path.abspath(__file__)
                 # print('module_dir',module_dir)
                 base_dir = os.path.dirname(os.path.dirname(module_dir))
                 # print('base_dir',base_dir)

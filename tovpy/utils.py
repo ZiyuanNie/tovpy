@@ -19,9 +19,12 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-from tovpy.eos import EOS
-from tovpy.units import Units
-from tovpy.tov import TOV
+from . import eos
+from . import units
+from . import tov
+from .eos import EOS
+from .units import Units
+from .tov import TOV
 
 uts = Units()
 
