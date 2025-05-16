@@ -697,22 +697,21 @@ class EOSTabular(object):
 
     """
 
-    def __init__(self, name, **params):
+    def __init__(self, name, filename=None, data=None):
 
         self.table = []
         self.uts = units.Units()
 
         if name == 'from_file':
 
-            if "filename" not in params:
+            if filename is None:
                 raise ValueError("Need a filename")
             
             FILENAME_LIST = pd.read_csv(StringIO(EOS_FILE_NAME), sep=',').values
 
-            if params['filename'] not in FILENAME_LIST:
-                raise ValueError("File "+params['filename']+" not found")
+            if filename not in FILENAME_LIST:
+                raise ValueError("File "+filename+" not found")
             else:
-                filename = params.get('filename')
                 # Determine the directory of this file (eos.py)
                 module_dir = os.path.abspath(__file__)
                 # print('module_dir',module_dir)
@@ -723,14 +722,13 @@ class EOSTabular(object):
                 self.table = np.loadtxt(data_path, skiprows=1)        
         elif name == 'from_ndarray':
 
-            if "data" not in params:
+            if data is None:
                 raise ValueError("Need data")
 
-            self.table = params['data']
+            self.table = data
             
         else:
-            
-            raise ValueError("Unknown source " + str(name))
+            self.table = np.loadtxt(filename, skiprows=1)
         
         self.table = self.__remove_leading_zero(self.table)
 
